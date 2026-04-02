@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 
-// --- 1. CONFIGURACIÓN DE LA ESCENA Y RENDERER ---
+// --- 1. ESCENA Y RENDERER ---
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x111111, 0.15); // Niebla para ambiente hostil
+scene.background = new THREE.Color(0x0a0a0a);
+scene.fog = new THREE.Fog(0x0a0a0a, 1, 15);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.rotation.order = 'YXZ'; // Orden de rotación para FPS
+camera.rotation.order = 'YXZ';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -13,34 +14,34 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// --- 2. ILUMINACIÓN ---
-const ambientLight = new THREE.AmbientLight(0x404040, 0.3); 
-scene.add(ambientLight);
+// --- 2. ILUMINACIÓN CORREGIDA ---
+// Luz de apoyo (para ver siluetas)
+const hemiLight = new THREE.HemisphereLight(0x444444, 0x000000, 0.6);
+scene.add(hemiLight);
 
-const orangeLight = new THREE.PointLight(0xff6600, 20, 15);
-orangeLight.position.set(0, 3.8, 0);
+// Luz Naranja Principal (Ventilador)
+const orangeLight = new THREE.PointLight(0xff6600, 40, 20); // Subí la intensidad a 40
+orangeLight.position.set(0, 3.5, 0);
 orangeLight.castShadow = true;
-orangeLight.shadow.mapSize.width = 1024;
-orangeLight.shadow.mapSize.height = 1024;
 scene.add(orangeLight);
 
-// --- 3. MATERIALES ---
-const woodMat = new THREE.MeshPhongMaterial({ color: 0x3d2817 });
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x555544, side: THREE.BackSide });
-const bedMat = new THREE.MeshPhongMaterial({ color: 0xd9d0c7 });
-const metalMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 });
+// --- 3. MATERIALES DE ALTA VISIBILIDAD ---
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x666655, side: THREE.BackSide, roughness: 0.8 });
+const woodMat = new THREE.MeshStandardMaterial({ color: 0x4a321f, roughness: 0.9 });
+const bedMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.7 });
 
-// --- 4. CONSTRUCCIÓN DEL MUNDO (PROCEDURAL) ---
+// --- 4. CONSTRUCCIÓN DE OBJETOS ---
 
-// Habitación
+// Habitación (Caja grande)
 const room = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 10), wallMat);
 room.receiveShadow = true;
 scene.add(room);
 
-// Ventilador de Techo
+// Ventilador
 const fanGroup = new THREE.Group();
-fanGroup.position.set(0, 3.9, 0);
-const bladeGeo = new THREE.BoxGeometry(2.5, 0.02, 0.4);
+fanGroup.position.set(0, 3.8, 0);
+const bladeGeo = new THREE.BoxGeometry(3, 0.05, 0.5);
 for(let i=0; i<4; i++) {
     const blade = new THREE.Mesh(bladeGeo, metalMat);
     blade.rotation.y = (Math.PI / 2) * i;
@@ -49,35 +50,30 @@ for(let i=0; i<4; i++) {
 }
 scene.add(fanGroup);
 
-// Cama
-const bedGroup = new THREE.Group();
-bedGroup.position.set(-2.5, 0, -2);
-const mattress = new THREE.Mesh(new THREE.BoxGeometry(4, 0.6, 2.5), bedMat);
-mattress.position.y = 0.6;
-mattress.castShadow = true;
-bedGroup.add(mattress);
-scene.add(bedGroup);
+// Cama (Posicionada a un lado)
+const bed = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 5), bedMat);
+bed.position.set(-3, 0.4, -2);
+bed.castShadow = true;
+bed.receiveShadow = true;
+scene.add(bed);
 
 // Ropero
-const wardrobe = new THREE.Mesh(new THREE.BoxGeometry(2, 4.5, 1.2), woodMat);
-wardrobe.position.set(2, 2.25, -3.5);
+const wardrobe = new THREE.Mesh(new THREE.BoxGeometry(2, 5, 1.5), woodMat);
+wardrobe.position.set(3, 2.5, -3);
 wardrobe.castShadow = true;
 scene.add(wardrobe);
 
-// Mesitas de Noche
-function createStand(x, z) {
-    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), woodMat);
-    stand.position.set(x, 0.4, z);
-    stand.castShadow = true;
-    scene.add(stand);
-}
-createStand(-0.8, -2); // Izquierda (donde estará la llave)
-createStand(-4.2, -2); // Derecha
+// Mesita de noche (Izquierda)
+const stand = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.8), woodMat);
+stand.position.set(-1, 0.5, -2);
+stand.castShadow = true;
+scene.add(stand);
 
-// --- 5. LÓGICA DE MOVIMIENTO Y CONTROLES ---
+// --- 5. MOVIMIENTO Y CÁMARA ---
+camera.position.set(0, 1.7, 3); // Empezamos en el centro
+
 let moveF = false, moveB = false, moveL = false, moveR = false;
 const velocity = new THREE.Vector3();
-const direction = new THREE.Vector3();
 
 document.addEventListener('keydown', (e) => {
     if(e.code === 'KeyW') moveF = true;
@@ -85,7 +81,6 @@ document.addEventListener('keydown', (e) => {
     if(e.code === 'KeyA') moveL = true;
     if(e.code === 'KeyD') moveR = true;
 });
-
 document.addEventListener('keyup', (e) => {
     if(e.code === 'KeyW') moveF = false;
     if(e.code === 'KeyS') moveB = false;
@@ -93,64 +88,55 @@ document.addEventListener('keyup', (e) => {
     if(e.code === 'KeyD') moveR = false;
 });
 
-document.body.addEventListener('click', () => {
-    document.body.requestPointerLock();
-});
+document.body.addEventListener('click', () => { document.body.requestPointerLock(); });
 
 document.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body) {
         camera.rotation.y -= e.movementX * 0.002;
         camera.rotation.x -= e.movementY * 0.002;
-        camera.rotation.x = Math.max(-Math.PI/2.5, Math.min(Math.PI/2.5, camera.rotation.x));
+        camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
     }
 });
 
-// --- 6. BUCLE DE ANIMACIÓN (GAME LOOP) ---
-camera.position.set(0, 1.7, 4);
+// --- 6. GAME LOOP ---
 let prevTime = performance.now();
-
 function animate() {
     requestAnimationFrame(animate);
     const time = performance.now();
     const delta = (time - prevTime) / 1000;
 
     if (document.pointerLockElement === document.body) {
-        // Física de movimiento
         velocity.x -= velocity.x * 10.0 * delta;
         velocity.z -= velocity.z * 10.0 * delta;
-
-        direction.z = Number(moveF) - Number(moveB);
-        direction.x = Number(moveR) - Number(moveL);
-        direction.normalize();
 
         const camDir = new THREE.Vector3();
         camera.getWorldDirection(camDir);
         camDir.y = 0; camDir.normalize();
         const sideDir = new THREE.Vector3().crossVectors(camera.up, camDir).normalize();
 
-        if (moveF || moveB) velocity.z -= direction.z * 80.0 * delta;
-        if (moveL || moveR) velocity.x -= direction.x * 80.0 * delta;
+        if (moveF) velocity.z += 80 * delta;
+        if (moveB) velocity.z -= 80 * delta;
+        if (moveL) velocity.x += 80 * delta;
+        if (moveR) velocity.x -= 80 * delta;
 
-        camera.position.addScaledVector(camDir, -velocity.z * delta * 0.05);
-        camera.position.addScaledVector(sideDir, velocity.x * delta * 0.05);
-
-        // Colisiones con paredes
+        camera.position.addScaledVector(camDir, velocity.z * delta * 0.05);
+        camera.position.addScaledVector(sideDir, -velocity.x * delta * 0.05);
+        
+        // Límites
         camera.position.x = Math.max(-4.5, Math.min(4.5, camera.position.x));
         camera.position.z = Math.max(-4.5, Math.min(4.5, camera.position.z));
     }
 
-    // Animaciones de ambiente
-    fanGroup.rotation.y += 0.1;
-    if (Math.random() > 0.97) orangeLight.intensity = 10 + Math.random() * 30;
+    fanGroup.rotation.y += 0.05;
+    if (Math.random() > 0.95) orangeLight.intensity = 20 + Math.random() * 40;
 
     prevTime = time;
     renderer.render(scene, camera);
 }
+animate();
 
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
-
-animate();
