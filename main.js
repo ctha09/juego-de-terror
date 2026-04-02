@@ -1,67 +1,79 @@
 import * as THREE from 'three';
+// Importamos el cargador de modelos 3D
+import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
-// 1. ESCENA Y CÁMARA
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x111111, 0.1); // Niebla para ambiente hostil
+scene.background = new THREE.Color(0x050505); // Fondo casi negro
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true; // Activar sombras
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Sombras suaves
 document.body.appendChild(renderer.domElement);
 
-// 2. ILUMINACIÓN NARANJA (Punto de luz del ventilador)
-const roomLight = new THREE.PointLight(0xffaa33, 1, 10);
-roomLight.position.set(0, 2.5, 0); // En el techo
-roomLight.castShadow = true;
-scene.add(roomLight);
+// --- 1. ILUMINACIÓN AMBIENTAL ---
+// Una luz muy tenue para que nada sea 100% negro
+const ambientLight = new THREE.AmbientLight(0x404040, 0.5); 
+scene.add(ambientLight);
 
-// 3. EL VENTILADOR (Simulación básica con aspas)
-const fanGroup = new THREE.Group();
-const bladeGeometry = new THREE.BoxGeometry(2, 0.05, 0.5);
-const bladeMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+// Luz Naranja del Ventilador (Punto central)
+const orangeLight = new THREE.PointLight(0xff6600, 10, 15);
+orangeLight.position.set(0, 3.5, 0);
+orangeLight.castShadow = true;
+scene.add(orangeLight);
 
-for(let i=0; i<4; i++) {
-    const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
-    blade.rotation.y = (Math.PI / 2) * i;
-    blade.position.y = 2.4;
-    blade.castShadow = true; 
-    fanGroup.add(blade);
-}
-scene.add(fanGroup);
+// --- 2. PAREDES CON TEXTURA (Moho y Papel Viejo) ---
+const loader = new THREE.TextureLoader();
+// Nota: Necesitarás imágenes reales en tu repo para que esto cargue
+const wallTexture = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/floors/FloorsCheckerboard_S_Diffuse.jpg'); 
 
-// 4. HABITACIÓN (Cubo invertido para paredes)
-const roomGeo = new THREE.BoxGeometry(10, 5, 10);
-const roomMat = new THREE.MeshPhongMaterial({ 
-    color: 0x888877, 
-    side: THREE.BackSide // Ver desde adentro
+const roomGeometry = new THREE.BoxGeometry(10, 8, 10);
+const roomMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x555544, // Color base "sucio"
+    side: THREE.BackSide,
+    map: wallTexture // Aquí irá tu textura de papel empapelado
 });
-const room = new THREE.Mesh(roomGeo, roomMat);
+const room = new THREE.Mesh(roomGeometry, roomMaterial);
 room.receiveShadow = true;
 scene.add(room);
 
-// 5. LÓGICA DE INTERACCIÓN BÁSICA
-camera.position.set(0, 1.6, 3); // Altura de los ojos
+// --- 3. CARGA DE OBJETOS (Cama, Ropero, Ventilador) ---
+const gltfLoader = new GLTFLoader();
+
+// Función para cargar modelos (Debes subir los archivos .glb a tu carpeta /assets)
+function loadModel(path, position, scale) {
+    gltfLoader.load(path, (gltf) => {
+        const model = gltf.scene;
+        model.position.set(position.x, position.y, position.z);
+        model.scale.set(scale, scale, scale);
+        model.traverse(n => {
+            if (n.isMesh) {
+                n.castShadow = true;
+                n.receiveShadow = true;
+            }
+        });
+        scene.add(model);
+    }, undefined, (error) => {
+        console.error("Error cargando modelo:", error);
+    });
+}
+
+// Ejemplo de posición para tus objetos:
+// loadModel('./assets/cama.glb', {x: -2, y: 0, z: -2}, 1);
+// loadModel('./assets/ropero.glb', {x: 2, y: 0, z: -3}, 1.2);
+
+// --- 4. CONTROLES DE MOVIMIENTO ---
+camera.position.set(0, 1.7, 4);
 
 function animate() {
     requestAnimationFrame(animate);
-
-    // Hacer girar el ventilador para las sombras
-    fanGroup.rotation.y += 0.1;
-
-    // Simular parpadeo de luz
-    if (Math.random() > 0.98) {
-        roomLight.intensity = Math.random() * 1.5;
+    
+    // Efecto de parpadeo realista
+    if (Math.random() > 0.95) {
+        orangeLight.intensity = 5 + Math.random() * 10;
     }
 
     renderer.render(scene, camera);
 }
-
-// Ajuste de pantalla
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
 animate();
