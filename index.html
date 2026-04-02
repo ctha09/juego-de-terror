@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terror en la Mansión - Piso 5</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="ui-container">
+        <div id="instruction">Busca la llave para abrir la puerta</div>
+        <div id="crosshair">+</div>
+    </div>
+
+    <div id="settings-panel">
+        <label>Gráficos:</label>
+        <select id="quality-settings">
+            <option value="high">Alta (Sombras dinámicas)</option>
+            <option value="low">Baja (Rendimiento)</option>
+        </select>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+            }
+        }
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>
