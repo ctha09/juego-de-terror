@@ -150,3 +150,100 @@ window.addEventListener('resize', () => {
 });
 
 animate();
+// --- 6. SISTEMA DE CONTROL DE PERSONAJE ---
+let moveForward = false;
+let moveBackward = false;
+let moveLeft = false;
+let moveRight = false;
+const velocity = new THREE.Vector3();
+const direction = new THREE.Vector3();
+
+// Bloqueo del puntero (hacer clic para jugar)
+document.body.addEventListener('click', () => {
+    document.body.requestPointerLock();
+});
+
+// Escuchar teclado
+const onKeyDown = (event) => {
+    switch (event.code) {
+        case 'KeyW': moveForward = true; break;
+        case 'KeyA': moveLeft = true; break;
+        case 'KeyS': moveBackward = true; break;
+        case 'KeyD': moveRight = true; break;
+    }
+};
+
+const onKeyUp = (event) => {
+    switch (event.code) {
+        case 'KeyW': moveForward = false; break;
+        case 'KeyA': moveLeft = false; break;
+        case 'KeyS': moveBackward = false; break;
+        case 'KeyD': moveRight = false; break;
+    }
+};
+
+document.addEventListener('keydown', onKeyDown);
+document.addEventListener('keyup', onKeyUp);
+
+// Movimiento con el Mouse (Giro de cámara)
+document.addEventListener('mousemove', (event) => {
+    if (document.pointerLockElement === document.body) {
+        camera.rotation.y -= event.movementX * 0.002;
+        camera.rotation.x -= event.movementY * 0.002;
+        
+        // Limitar la rotación vertical para no dar la vuelta completa
+        camera.rotation.x = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, camera.rotation.x));
+    }
+});
+
+// Asegurarse de que la cámara use rotación por orden de Euler (Y luego X)
+camera.rotation.order = 'YXZ';
+
+// --- 7. ACTUALIZACIÓN DEL BUCLE DE ANIMACIÓN ---
+// Reemplaza tu función animate() por esta:
+
+let prevTime = performance.now();
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    const time = performance.now();
+    const delta = (time - prevTime) / 1000;
+
+    if (document.pointerLockElement === document.body) {
+        // Fricción/Desaceleración
+        velocity.x -= velocity.x * 10.0 * delta;
+        velocity.z -= velocity.z * 10.0 * delta;
+
+        direction.z = Number(moveForward) - Number(moveBackward);
+        direction.x = Number(moveRight) - Number(moveLeft);
+        direction.normalize();
+
+        if (moveForward || moveBackward) velocity.z -= direction.z * 100.0 * delta;
+        if (moveLeft || moveRight) velocity.x -= direction.x * 100.0 * delta;
+
+        // Aplicar movimiento relativo a la orientación de la cámara
+        const camDir = new THREE.Vector3();
+        camera.getWorldDirection(camDir);
+        camDir.y = 0; // No volar al mirar arriba
+        camDir.normalize();
+        
+        const sideDir = new THREE.Vector3().crossVectors(camera.up, camDir).normalize();
+
+        camera.position.addScaledVector(camDir, -velocity.z * delta * 0.05);
+        camera.position.addScaledVector(sideDir, velocity.x * delta * 0.05);
+
+        // --- LÍMITES DE LA HABITACIÓN (Colisiones simples) ---
+        camera.position.x = Math.max(-4.5, Math.min(4.5, camera.position.x));
+        camera.position.z = Math.max(-4.5, Math.min(4.5, camera.position.z));
+    }
+
+    // Giro del ventilador y parpadeo (Lo que ya tenías)
+    fanGroup.rotation.y += 0.08;
+    if (Math.random() > 0.96) {
+        orangeLight.intensity = 15 + Math.random() * 20;
+    }
+
+    prevTime = time;
+    renderer.render(scene, camera);
+}
