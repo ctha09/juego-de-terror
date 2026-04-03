@@ -1,6 +1,5 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
-// --- CONFIGURACIÓN ---
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x0a0a0a, 0.15);
 
@@ -14,8 +13,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const loader = new THREE.TextureLoader();
-let hasKey = false, drawerOpen = false, hasFlashlight = false, flashlightOn = false;
-let doorOpen = false;
+let closetOpen = false, doorUnlocked = false, doorMoving = false;
 let keys = {};
 
 const getTex = (path, r) => {
@@ -25,129 +23,120 @@ const getTex = (path, r) => {
     return t;
 };
 
-// --- MATERIALES ---
-const wallMat = new THREE.MeshStandardMaterial({ map: getTex('pared.jpg', 3), color: 0x555555, side: THREE.BackSide });
+// Materiales
+const wallMat = new THREE.MeshStandardMaterial({ map: getTex('pared.jpg', 3), color: 0x444444, side: THREE.BackSide });
 const woodMat = new THREE.MeshStandardMaterial({ map: getTex('madera.jpg', 1), color: 0x2d1f16 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.1 });
 
-// --- HABITACIÓN ---
+// Habitación
 const room = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 8), wallMat);
 room.position.y = 2;
 room.receiveShadow = true;
 scene.add(room);
 
-// VENTILADOR (Para sombras dinámicas)
+// Iluminación parpadeante (Ventilador)
 const fanGroup = new THREE.Group();
-fanGroup.position.set(0, 3.7, 0);
+fanGroup.position.set(0, 3.8, 0);
 for(let i=0; i<4; i++) {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.02, 0.5), woodMat.clone());
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.02, 0.5), woodMat);
     blade.rotation.y = (Math.PI / 2) * i;
     blade.castShadow = true;
     fanGroup.add(blade);
 }
 scene.add(fanGroup);
 
-const light = new THREE.PointLight(0xff6600, 20, 15);
+const light = new THREE.PointLight(0xff4400, 15, 12);
 light.position.set(0, 3.9, 0);
 light.castShadow = true;
 scene.add(light);
 
-// --- NUEVA MESITA DE LUZ ---
-const standGroup = new THREE.Group();
-standGroup.position.set(-1.2, 0, -3);
-scene.add(standGroup);
+// --- CAMA ---
+const bed = new THREE.Group();
+bed.position.set(-2.5, 0, -1.5);
+scene.add(bed);
 
-// Cuerpo de la mesita
-const standBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.7), woodMat);
-standBody.position.y = 0.5;
-standBody.castShadow = true;
-standGroup.add(standBody);
+const mattress = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.6, 4), new THREE.MeshStandardMaterial({color: 0x111111}));
+mattress.position.y = 0.3;
+mattress.receiveShadow = true;
+bed.add(mattress);
 
-// El Cajón (Objeto separado para animar)
-const drawerGroup = new THREE.Group();
-drawerGroup.position.set(0, 0.65, 0.05); // Posición inicial cerrado
-standGroup.add(drawerGroup);
+// --- ROPERO ---
+const closet = new THREE.Group();
+closet.position.set(2, 0, -3.5);
+scene.add(closet);
 
-const drawerFace = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.3, 0.05), woodMat.clone());
-drawerFace.name = "cajon_target"; // A esto le daremos click
-drawerGroup.add(drawerFace);
+const closetBody = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 0.8), woodMat);
+closetBody.position.y = 1.75;
+closetBody.castShadow = true;
+closet.add(closetBody);
 
-const drawerBottom = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.5), woodMat.clone());
-drawerBottom.position.set(0, -0.14, -0.25);
-drawerGroup.add(drawerBottom);
+// Puerta del ropero (lo que se abre)
+const closetDoor = new THREE.Group();
+closetDoor.position.set(0, 1.75, 0.4);
+closetDoor.name = "closet_target";
+closet.add(closetDoor);
 
-// Llave dentro del cajón
-const key = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 0.05), new THREE.MeshStandardMaterial({color: 0xffd700}));
-key.position.set(0, -0.1, -0.25);
-key.name = "llave_target";
-key.visible = false;
-drawerGroup.add(key);
+const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(2.3, 3.3, 0.05), woodMat.clone());
+doorPanel.name = "closet_target";
+closetDoor.add(doorPanel);
 
-// Linterna sobre la mesita
-const flashlightItem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.25), new THREE.MeshStandardMaterial({color: 0x000000}));
-flashlightItem.rotation.z = Math.PI / 2;
-flashlightItem.position.set(0, 1.05, -0.1);
-flashlightItem.name = "linterna_target";
-standGroup.add(flashlightItem);
+// --- PUERTA BLINDADA ---
+const armorDoorGroup = new THREE.Group();
+armorDoorGroup.position.set(3.9, 1.6, 1.5);
+scene.add(armorDoorGroup);
 
-// --- PUERTA ---
-const doorFrame = new THREE.Group();
-doorFrame.position.set(3.9, 1.5, 0);
-scene.add(doorFrame);
+const armorDoor = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3.2, 1.8), metalMat);
+armorDoor.name = "door_target";
+armorDoorGroup.add(armorDoor);
 
-const door = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 1.5), new THREE.MeshStandardMaterial({color: 0x1a0a00}));
-door.name = "puerta_target";
-door.position.z = 0.75; // Pivote para que abra como una puerta real
-doorFrame.add(door);
-
-// --- LINTERNA (LUZ) ---
-const spot = new THREE.SpotLight(0xffffff, 0, 20, Math.PI / 6);
-spot.castShadow = true;
-scene.add(spot);
-scene.add(spot.target);
+// Pantalla de código en la puerta
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.2), new THREE.MeshBasicMaterial({color: 0x003300}));
+screen.position.set(-0.08, 0.5, 0);
+screen.rotation.y = -Math.PI/2;
+armorDoorGroup.add(screen);
 
 // --- INTERACCIÓN ---
 function interact() {
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-    const hits = raycaster.intersectObjects(scene.children, true);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(0,0), camera);
+    const hits = ray.intersectObjects(scene.children, true);
     
     if(hits.length > 0) {
         const obj = hits[0].object;
         
-        if(obj.name === "linterna_target") {
-            hasFlashlight = true; obj.visible = false;
-            document.getElementById('instruction').innerText = "Linterna recogida (Presiona F)";
+        if(obj.name === "closet_target") {
+            closetOpen = !closetOpen;
+            document.getElementById('instruction').innerText = closetOpen ? "Ropero abierto" : "Ropero cerrado";
         }
-        if(obj.name === "cajon_target" && !drawerOpen) {
-            drawerOpen = true; key.visible = true;
-            document.getElementById('instruction').innerText = "Cajón abierto. Toma la llave.";
-        }
-        if(obj.name === "llave_target" && drawerOpen) {
-            hasKey = true; obj.visible = false;
-            document.getElementById('instruction').innerText = "¡Tienes la llave! Busca la puerta.";
-        }
-        if(obj.name === "puerta_target") {
-            if(hasKey) {
-                doorOpen = true;
-                document.getElementById('instruction').innerText = "Puerta abierta.";
+        
+        if(obj.name === "door_target") {
+            if(!doorUnlocked) {
+                document.exitPointerLock();
+                document.getElementById('keypad-ui').style.display = 'block';
             } else {
-                document.getElementById('instruction').innerText = "Está cerrada con llave.";
+                doorMoving = true;
             }
         }
     }
 }
 
-// --- CONTROLES ---
+window.addEventListener('unlockDoor', () => {
+    doorUnlocked = true;
+    document.getElementById('instruction').innerText = "Cerradura desactivada. Presiona E para abrir.";
+});
+
+// Controles básicos
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if(e.code === 'KeyE') interact();
-    if(e.code === 'KeyF' && hasFlashlight) {
-        flashlightOn = !flashlightOn;
-        spot.intensity = flashlightOn ? 80 : 0;
-    }
 });
 window.addEventListener('keyup', (e) => keys[e.code] = false);
-window.addEventListener('mousedown', () => document.body.requestPointerLock());
+window.addEventListener('mousedown', () => {
+    if(document.getElementById('keypad-ui').style.display !== 'block') {
+        document.body.requestPointerLock();
+    }
+});
+
 window.addEventListener('mousemove', (e) => {
     if(document.pointerLockElement) {
         camera.rotation.y -= e.movementX * 0.002;
@@ -156,13 +145,13 @@ window.addEventListener('mousemove', (e) => {
     }
 });
 
-// --- ANIMACIÓN ---
-camera.position.set(0, 1.7, 3);
+camera.position.set(0, 1.7, 4);
+
 function animate() {
     requestAnimationFrame(animate);
     
     if(document.pointerLockElement) {
-        const speed = 0.07;
+        const speed = 0.06;
         if(keys['KeyW']) camera.translateZ(-speed);
         if(keys['KeyS']) camera.translateZ(speed);
         if(keys['KeyA']) camera.translateX(-speed);
@@ -170,22 +159,16 @@ function animate() {
         camera.position.y = 1.7;
     }
 
-    if(hasFlashlight) {
-        spot.position.copy(camera.position);
-        spot.target.position.copy(camera.position).add(camera.getWorldDirection(new THREE.Vector3()));
+    // Animación Ropero
+    if(closetOpen && closetDoor.rotation.y < 1.5) closetDoor.rotation.y += 0.05;
+    if(!closetOpen && closetDoor.rotation.y > 0) closetDoor.rotation.y -= 0.05;
+
+    // Animación Puerta Blindada
+    if(doorMoving && armorDoorGroup.position.z < 3.5) {
+        armorDoorGroup.position.z += 0.05;
     }
 
-    // Animación de apertura del cajón
-    if(drawerOpen && drawerGroup.position.z < 0.5) {
-        drawerGroup.position.z += 0.03;
-    }
-
-    // Animación de apertura de puerta
-    if(doorOpen && doorFrame.rotation.y < 1.5) {
-        doorFrame.rotation.y += 0.05;
-    }
-
-    fanGroup.rotation.y += 0.15;
+    fanGroup.rotation.y += 0.2;
     renderer.render(scene, camera);
 }
 animate();
