@@ -1,5 +1,6 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
+// --- 1. CONFIGURACIÓN DE ESCENA ---
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x050505, 0.15);
 
@@ -12,11 +13,12 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// --- ESTADO DEL JUEGO ---
+// --- 2. ESTADO DEL JUEGO ---
 let hasKey = false;
 let drawerOpen = false;
+let keys = {};
 
-// --- LUCES ---
+// --- 3. LUCES ---
 const ambient = new THREE.AmbientLight(0x404040, 0.1); 
 scene.add(ambient);
 
@@ -29,89 +31,96 @@ const lightningLight = new THREE.DirectionalLight(0xffffff, 0);
 lightningLight.position.set(5, 3, -5);
 scene.add(lightningLight);
 
-// --- HABITACIÓN ---
+// --- 4. MATERIALES ---
 const wallMat = new THREE.MeshStandardMaterial({ color: 0x444433, side: THREE.BackSide });
+const woodMat = new THREE.MeshStandardMaterial({ color: 0x221105 });
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8 });
+
+// --- 5. OBJETOS ---
+// Habitación
 const walls = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 10), wallMat);
 walls.receiveShadow = true;
 scene.add(walls);
 
-// --- VENTILADOR ---
+// Ventilador
 const fan = new THREE.Group();
 fan.position.set(0, 3.8, 0);
-const bladeGeo = new THREE.BoxGeometry(3.5, 0.05, 0.5);
-const woodMat = new THREE.MeshStandardMaterial({ color: 0x221105 });
 for(let i=0; i<4; i++) {
-    const blade = new THREE.Mesh(bladeGeo, woodMat);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.05, 0.5), metalMat);
     blade.rotation.y = (Math.PI / 2) * i;
     blade.castShadow = true;
     fan.add(blade);
 }
 scene.add(fan);
 
-// --- MESITA Y CAJÓN (Interactivo) ---
+// Cama
+const bed = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 5), new THREE.MeshStandardMaterial({color: 0x777766}));
+bed.position.set(-3, 0.4, -2);
+bed.castShadow = true;
+scene.add(bed);
+
+// Ropero
+const wardrobe = new THREE.Mesh(new THREE.BoxGeometry(2, 5, 1.5), woodMat);
+wardrobe.position.set(3, 2.5, -3);
+wardrobe.castShadow = true;
+scene.add(wardrobe);
+
+// Mesita de noche interactiva
 const standGroup = new THREE.Group();
 standGroup.position.set(-1.2, 0.5, -2.5);
+scene.add(standGroup);
 
 const standBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.8), woodMat);
 standBody.castShadow = true;
 standGroup.add(standBody);
 
-// El cajón es un objeto separado para poder moverlo
-const drawerGeo = new THREE.BoxGeometry(0.7, 0.2, 0.7);
-const drawerMat = new THREE.MeshStandardMaterial({ color: 0x332211 });
-const drawer = new THREE.Mesh(drawerGeo, drawerMat);
-drawer.position.set(0, 0.2, 0.05); // Posición inicial cerrado
-drawer.name = "cajon"; // Nombre para detectarlo con el Raycaster
+// EL CAJÓN (Importante: nombre "cajon")
+const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 0.7), new THREE.MeshStandardMaterial({color: 0x332211}));
+drawer.position.set(0, 0.2, 0.05); 
+drawer.name = "cajon"; 
 standGroup.add(drawer);
 
-// La Llave (pequeño cubo dorado dentro del cajón)
-const keyGeo = new THREE.BoxGeometry(0.1, 0.02, 0.2);
-const keyMat = new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.2 });
-const key = new THREE.Mesh(keyGeo, keyMat);
+// LA LLAVE (Importante: nombre "llave")
+const key = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.2), new THREE.MeshStandardMaterial({color: 0xffd700}));
 key.position.set(0, 0.15, 0);
-key.visible = true;
 key.name = "llave";
-drawer.add(key); // La llave se mueve junto con el cajón
+drawer.add(key);
 
-scene.add(standGroup);
-
-// --- RAYCASTER (Para detectar clicks en objetos) ---
+// --- 6. RAYCASTER E INTERACCIÓN ---
 const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2(0, 0); // El centro de la pantalla
+const centerMouse = new THREE.Vector2(0, 0); 
 
-// --- CONTROLES ---
-let keys = {};
-document.addEventListener('keydown', (e) => keys[e.code] = true);
-document.addEventListener('keyup', (e) => keys[e.code] = false);
-document.addEventListener('mousedown', (e) => {
-    if (document.pointerLockElement !== document.body) {
-        document.body.requestPointerLock();
-    } else {
-        // Intentar interactuar cuando hacemos click
-        checkInteraction();
-    }
-});
-
-function checkInteraction() {
-    raycaster.setFromCamera(mouse, camera);
+function interact() {
+    raycaster.setFromCamera(centerMouse, camera);
     const intersects = raycaster.intersectObjects(scene.children, true);
 
     if (intersects.length > 0) {
-        const object = intersects[0].object;
+        let obj = intersects[0].object;
+        console.log("Mirando a:", obj.name);
 
-        if (object.name === "cajon" && !drawerOpen) {
+        if (obj.name === "cajon" && !drawerOpen) {
             drawerOpen = true;
-            document.getElementById('instruction').innerText = "Cajón abierto... ¿Qué hay dentro?";
-        } else if (object.name === "llave" && drawerOpen && !hasKey) {
+            document.getElementById('instruction').innerText = "Abriste el cajón. Mira adentro.";
+        } 
+        else if (obj.name === "llave" && drawerOpen && !hasKey) {
             hasKey = true;
-            object.visible = false;
-            document.getElementById('instruction').innerText = "Has obtenido la llave antigua.";
-            setTimeout(() => {
-                document.getElementById('instruction').innerText = "Busca la salida en el piso de abajo.";
-            }, 3000);
+            obj.visible = false;
+            document.getElementById('instruction').innerText = "¡Tienes la llave! Ahora busca la puerta.";
         }
     }
 }
+
+// --- 7. CONTROLES DE USUARIO ---
+document.addEventListener('keydown', (e) => keys[e.code] = true);
+document.addEventListener('keyup', (e) => keys[e.code] = false);
+
+document.addEventListener('mousedown', () => {
+    if (document.pointerLockElement === document.body) {
+        interact();
+    } else {
+        document.body.requestPointerLock();
+    }
+});
 
 document.addEventListener('mousemove', (e) => {
     if (document.pointerLockElement === document.body) {
@@ -121,9 +130,9 @@ document.addEventListener('mousemove', (e) => {
     }
 });
 
+// --- 8. BUCLE DE JUEGO ---
 camera.position.set(0, 1.7, 4);
 
-// --- BUCLE PRINCIPAL ---
 function animate() {
     requestAnimationFrame(animate);
 
@@ -136,21 +145,25 @@ function animate() {
         camera.position.y = 1.7; 
     }
 
-    // Animación del cajón abriéndose
+    // Animación del cajón
     if (drawerOpen && drawer.position.z < 0.5) {
         drawer.position.z += 0.02;
     }
 
+    // Ambiente
     fan.rotation.y += 0.15;
-
-    // Relámpagos
     if (Math.random() > 0.985) {
-        lightningLight.intensity = 3;
-        setTimeout(() => { lightningLight.intensity = 0; }, 150);
+        lightningLight.intensity = 4;
+        setTimeout(() => lightningLight.intensity = 0, 100);
     }
-
     orangeLight.intensity = 30 + Math.random() * 15;
 
     renderer.render(scene, camera);
 }
 animate();
+
+window.onresize = () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+};
