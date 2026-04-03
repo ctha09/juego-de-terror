@@ -2,7 +2,7 @@ import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
 // --- CONFIGURACIÓN ---
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0a0a0a, 0.1); // Niebla espesa
+scene.fog = new THREE.FogExp2(0x0a0a0a, 0.12); // Niebla hostil
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.rotation.order = 'YXZ';
@@ -21,7 +21,6 @@ const textureLoader = new THREE.TextureLoader();
 
 // --- 1. CARGA DE TEXTURAS (LA CLAVE DEL ÉXITO) ---
 // NOTA: Asegúrate de que pared.jpg y madera.jpg estén en tu repo.
-// He añadido un color de respaldo por si la imagen tarda en cargar.
 const wallTexture = textureLoader.load('pared.jpg');
 const woodTexture = textureLoader.load('madera.jpg');
 
@@ -41,15 +40,8 @@ const woodMat = new THREE.MeshStandardMaterial({
     roughness: 0.9
 });
 
-// Suelo con la misma madera, pero más oscuro
-const floorMat = new THREE.MeshStandardMaterial({ 
-    map: woodTexture,
-    color: 0x221105,
-    roughness: 1
-});
-
 // --- 3. LUCES ---
-const ambient = new THREE.AmbientLight(0xffffff, 0.02); // Luz mínima para siluetas
+const ambient = new THREE.AmbientLight(0xffffff, 0.01); // Luz mínima para siluetas
 scene.add(ambient);
 
 // Luz del Ventilador (Bajada de intensidad para no 'quemar' las texturas)
@@ -70,14 +62,6 @@ const room = new THREE.Mesh(roomGeo, wallMat);
 room.position.y = 4; // Subimos el cuarto para que el suelo esté en y=0
 room.receiveShadow = true;
 scene.add(room);
-
-// Suelo (Plano separado para mejor textura)
-const floorGeo = new THREE.PlaneGeometry(10, 10);
-const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = -Math.PI / 2;
-floor.position.y = 0.01; // Justo encima del fondo de la caja
-floor.receiveShadow = true;
-scene.add(floor);
 
 // Ventilador
 const fan = new THREE.Group();
