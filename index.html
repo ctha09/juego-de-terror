@@ -3,76 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horror Facility - Carlos Th. Acosta</title>
-    <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: #000; color: #fff; font-family: 'Courier New', Courier, monospace; }
-        
-        /* El Canvas del juego debe ocupar todo el fondo */
-        canvas { display: block; position: fixed; top: 0; left: 0; z-index: 1; }
-
-        /* Capa de Interfaz: Invisible para el ratón por defecto */
-        #ui-layer { 
-            position: absolute; width: 100%; height: 100%; 
-            z-index: 10; pointer-events: none; 
+    <title>Proyecto Promo 2026</title>
+    <link rel="stylesheet" href="style.css">
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.150.1/build/three.module.js"
         }
-
-        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.3); font-size: 24px; }
-        .hud-box { position: absolute; background: rgba(0,0,0,0.8); border: 1px solid #333; padding: 10px; pointer-events: none; }
-        #inventory { bottom: 100px; left: 20px; width: 140px; }
-        #stats { bottom: 20px; left: 20px; width: 140px; }
-
-        /* EL KEYPAD: Solo este debe recibir clics cuando aparezca */
-        #keypad-ui {
-            display: none; position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); background: #0a0a0a;
-            padding: 20px; border: 2px solid #444; z-index: 100;
-            pointer-events: all; 
-        }
-        #display { background: #000; color: #0f0; padding: 10px; margin-bottom: 15px; font-size: 20px; text-align: center; border: 1px solid #0f0; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-        button { padding: 15px; background: #222; color: #fff; border: 1px solid #444; cursor: pointer; }
-        button:active { background: #444; }
-    </style>
+      }
+    </script>
 </head>
 <body>
-
-    <div id="ui-layer">
-        <div id="crosshair">+</div>
-        <div id="inventory" class="hud-box">INVENTARIO:<br>[Linterna]</div>
-        <div id="stats" class="hud-box">SALUD: ■■■■□<br>ESTAMINA: ■■</div>
-        <div id="instruction" style="position:absolute; top:10%; width:100%; text-align:center; color:#ffaa00;">Haz CLIC para empezar</div>
-    </div>
-
-    <div id="keypad-ui">
-        <div id="display"></div>
-        <div class="grid">
-            <button onclick="addNum('1')">1</button><button onclick="addNum('2')">2</button><button onclick="addNum('3')">3</button>
-            <button onclick="addNum('4')">4</button><button onclick="addNum('5')">5</button><button onclick="addNum('6')">6</button>
-            <button onclick="addNum('7')">7</button><button onclick="addNum('8')">8</button><button onclick="addNum('9')">9</button>
-            <button style="background:#500" onclick="closeKeypad()">X</button><button onclick="addNum('0')">0</button>
-            <button style="background:#050" onclick="checkCode()">OK</button>
-        </div>
+    <div id="info" class="hud-box">
+        WASD: Mover | SHIFT: Correr | E: Interactuar | F: Linterna
     </div>
 
     <script type="module" src="main.js"></script>
-    <script>
-        let currentInput = "";
-        const correctCode = "031223";
-        window.addNum = (n) => { if(currentInput.length < 6) { currentInput += n; document.getElementById('display').innerText = currentInput; } };
-        window.closeKeypad = () => { 
-            document.getElementById('keypad-ui').style.display = 'none'; 
-            currentInput = ""; 
-            document.body.requestPointerLock(); 
-        };
-        window.checkCode = () => {
-            if(currentInput === correctCode) {
-                window.dispatchEvent(new CustomEvent('openBlindDoor'));
-                closeKeypad();
-            } else { 
-                document.getElementById('display').innerText = "ERROR";
-                setTimeout(() => { currentInput = ""; document.getElementById('display').innerText = ""; }, 500);
-            }
-        };
-    </script>
 </body>
 </html>
