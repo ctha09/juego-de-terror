@@ -1,7 +1,8 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x050505, 0.08);
+// Niebla muy baja para que no bloquee la vista inicial
+scene.fog = new THREE.FogExp2(0x050505, 0.05);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.rotation.order = 'YXZ';
@@ -11,153 +12,106 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-const loader = new THREE.TextureLoader();
-let keys = {}, doorMoving = false, hasFlashlight = false, flashlightOn = false;
-const interactables = [];
+// --- LUCES PARA EVITAR PANTALLA NEGRA ---
+const ambient = new THREE.AmbientLight(0xffffff, 0.05); // Luz mínima general
+scene.add(ambient);
 
-// Materiales
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-const roomMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
-const woodMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f });
+const roomLight = new THREE.PointLight(0xffaa00, 15, 10); // Luz naranja de la pieza
+roomLight.position.set(0, 3.5, 0);
+scene.add(roomLight);
 
-// --- HABITACIÓN INICIAL (Igual que antes) ---
+// --- OBJETOS ---
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
 const room = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 8), wallMat);
 room.position.y = 2;
+room.receiveShadow = true;
 scene.add(room);
-const light = new THREE.PointLight(0xff5500, 15, 10);
-light.position.set(0, 3.8, 0);
-scene.add(light);
 
-// --- PASILLO EXTENDIDO ---
-const corridorGroup = new THREE.Group();
-corridorGroup.position.set(16, 2, 1.5);
-scene.add(corridorGroup);
+// Ropero
+const closetGroup = new THREE.Group();
+closetGroup.position.set(0, 0, -3.5);
+scene.add(closetGroup);
 
-const corridorGeo = new THREE.BoxGeometry(30, 4, 4);
-const corridor = new THREE.Mesh(corridorGeo, new THREE.MeshStandardMaterial({color: 0x111, side: THREE.BackSide}));
-corridorGroup.add(corridor);
+const closetBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.2, 0.8), new THREE.MeshStandardMaterial({color: 0x221100}));
+closetBody.position.y = 1.6;
+closetGroup.add(closetBody);
 
-// Luces LED Blancas Centrales
-for(let i = -14; i <= 14; i += 4) {
-    const pLight = new THREE.PointLight(0xffffff, 5, 6);
-    pLight.position.set(i, 1.8, 0);
-    corridorGroup.add(pLight);
-}
+const doorL = new THREE.Mesh(new THREE.BoxGeometry(1.1, 3.1, 0.05), new THREE.MeshStandardMaterial({color: 0x332211}));
+doorL.position.set(-0.55, 1.6, 0.4);
+doorL.name = "interactable_closet";
+closetGroup.add(doorL);
 
-// --- GENERACIÓN DE PUERTAS Y HABITACIONES ---
-function createRoom(x, side, isControlCenter = false) {
-    const zPos = side === "left" ? -2 : 2;
-    const yRot = side === "left" ? 0 : Math.PI;
+// Linterna (fl)
+const fl = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.3), new THREE.MeshStandardMaterial({color: 0x000, emissive: 0x222}));
+fl.position.set(0, 1.5, -0.1);
+fl.name = "interactable_fl";
+closetGroup.add(fl);
 
-    // Puerta
-    const doorGroup = new THREE.Group();
-    doorGroup.position.set(x, -0.4, zPos);
-    doorGroup.userData = { open: false, type: "door" };
-    corridorGroup.add(doorGroup);
+// --- LÓGICA DE RATÓN Y MOVIMIENTO ---
+let keys = {}, hasFlashlight = false, flashlightOn = false, closetOpen = false;
 
-    const doorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3.2, 1.8), woodMat);
-    doorMesh.position.z = 0.9 * (side === "left" ? 1 : -1);
-    doorMesh.name = "interactable_door";
-    doorGroup.add(doorMesh);
-    interactables.push(doorMesh);
-
-    // Habitación detrás de la puerta
-    const rGeo = new THREE.BoxGeometry(4, 4, 4);
-    const rMesh = new THREE.Mesh(rGeo, isControlCenter ? new THREE.MeshStandardMaterial({color:0x051111, side:THREE.BackSide}) : roomMat);
-    rMesh.position.set(x, 0, zPos * 2.5);
-    corridorGroup.add(rMesh);
-
-    // Luz de la habitación
-    const rLight = new THREE.PointLight(isControlCenter ? 0x00ffff : 0xffffff, 10, 5);
-    rLight.position.set(x, 1, zPos * 2.5);
-    corridorGroup.add(rLight);
-
-    if(isControlCenter) {
-        // Simular Televisores (Centro de Control)
-        const tv = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 1.2), new THREE.MeshBasicMaterial({color: 0x22ffaa}));
-        tv.position.set(x + 1, 0.5, zPos * 3);
-        corridorGroup.add(tv);
+// CORRECCIÓN: El clic debe activar el PointerLock
+window.addEventListener('mousedown', () => {
+    if (document.getElementById('keypad-ui').style.display !== 'block') {
+        renderer.domElement.requestPointerLock();
+        document.getElementById('instruction').innerText = "Presiona 'E' para interactuar";
     }
-}
+});
 
-// Lado Izquierdo (4 puertas)
-for(let i=0; i<4; i++) createRoom(-10 + (i*4), "left");
-
-// Lado Derecho (3 puertas, la primera es Centro de Control)
-createRoom(-10, "right", true);
-createRoom(-6, "right");
-createRoom(-2, "right");
-
-// --- PUERTA BLINDADA INICIAL ---
-const armorDoorGroup = new THREE.Group();
-armorDoorGroup.position.set(3.9, 1.6, 1.5);
-scene.add(armorDoorGroup);
-const armorDoor = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3.2, 2.5), new THREE.MeshStandardMaterial({color: 0x111, metalness: 0.9}));
-armorDoor.name = "armor_door";
-scene.add(armorDoorGroup); 
-interactables.push(armorDoor);
-
-// Linterna Jugador
-const spot = new THREE.SpotLight(0xffffff, 0, 25, Math.PI/6, 0.5);
-scene.add(spot); scene.add(spot.target);
-
-// --- SISTEMA DE INTERACCIÓN ---
+// Función de Raycaster corregida
 function interact() {
-    const ray = new THREE.Raycaster();
-    ray.setFromCamera(new THREE.Vector2(0,0), camera);
-    const hits = ray.intersectObjects(scene.children, true);
-    
-    if(hits.length > 0) {
-        const obj = hits[0].object;
-        if(obj.name === "interactable_door") {
-            const group = obj.parent;
-            group.userData.open = !group.userData.open;
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    if (intersects.length > 0) {
+        const obj = intersects[0].object;
+        console.log("Interactuando con:", obj.name);
+
+        if (obj.name === "interactable_closet") {
+            closetOpen = !closetOpen;
+            // Animación simple de apertura
+            obj.parent.position.z += closetOpen ? 0.2 : -0.2; 
         }
-        if(obj.name === "armor_door") {
-            document.exitPointerLock();
-            document.getElementById('keypad-ui').style.display='block';
+
+        if (obj.name === "interactable_fl") {
+            hasFlashlight = true;
+            obj.visible = false;
+            document.getElementById('instruction').innerText = "Linterna equipada (F)";
         }
-        // Lógica de linterna (simplificada)
-        if(obj.name === "fl") { hasFlashlight = true; obj.visible = false; }
     }
 }
 
-window.addEventListener('openBlindDoor', () => { doorMoving = true; });
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if(e.code === 'KeyE') interact();
-    if(e.code === 'KeyF' && hasFlashlight) { flashlightOn = !flashlightOn; spot.intensity = flashlightOn ? 100 : 0; }
+    if (e.code === 'KeyE') interact();
+    if (e.code === 'KeyF' && hasFlashlight) {
+        flashlightOn = !flashlightOn;
+        // Aquí podrías añadir un SpotLight atado a la cámara
+    }
 });
 window.addEventListener('keyup', (e) => keys[e.code] = false);
 
-// Render loop
-camera.position.set(0, 1.7, 4);
+window.addEventListener('mousemove', (e) => {
+    if (document.pointerLockElement) {
+        camera.rotation.y -= e.movementX * 0.002;
+        camera.rotation.x -= e.movementY * 0.002;
+        camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
+    }
+});
+
+// Bucle de animación
+camera.position.set(0, 1.7, 3);
 function animate() {
     requestAnimationFrame(animate);
-    if(document.pointerLockElement) {
-        const speed = 0.08;
-        if(keys['KeyW']) camera.translateZ(-speed);
-        if(keys['KeyS']) camera.translateZ(speed);
-        if(keys['KeyA']) camera.translateX(-speed);
-        if(keys['KeyD']) camera.translateX(speed);
-        camera.position.y = 1.7;
+    if (document.pointerLockElement) {
+        const speed = 0.06;
+        if (keys['KeyW']) camera.translateZ(-speed);
+        if (keys['KeyS']) camera.translateZ(speed);
+        if (keys['KeyA']) camera.translateX(-speed);
+        if (keys['KeyD']) camera.translateX(speed);
+        camera.position.y = 1.7; // Mantener altura
     }
-
-    if(hasFlashlight) {
-        spot.position.copy(camera.position);
-        spot.target.position.copy(camera.position).add(camera.getWorldDirection(new THREE.Vector3()));
-    }
-
-    // Animación de puertas del pasillo
-    scene.traverse((obj) => {
-        if(obj.userData && obj.userData.type === "door") {
-            const targetRot = obj.userData.open ? Math.PI/2 : 0;
-            obj.rotation.y += (targetRot - obj.rotation.y) * 0.1;
-        }
-    });
-
-    if(doorMoving && armorDoorGroup.position.x < 8) armorDoorGroup.position.x += 0.05;
-    
     renderer.render(scene, camera);
 }
 animate();
