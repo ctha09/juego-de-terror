@@ -1,19 +1,24 @@
-body { 
-    margin: 0; 
-    overflow: hidden; 
-    background-color: #000; 
-    font-family: sans-serif;
-}
+body { margin: 0; overflow: hidden; background-color: #000; }
 
 .hud-box { 
     position: absolute; 
-    top: 20px;
-    left: 20px;
-    background: rgba(255,255,255,0.1); /* Fondo muy suave */
+    top: 20px; left: 20px;
+    background: rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.3); 
-    color: #aaa; /* Texto gris para no distraer */
+    color: #aaa;
     padding: 10px; 
     pointer-events: none; 
     font-size: 12px;
     z-index: 100;
+}
+
+/* Estilo base para el keypad cuando lo implementes */
+#keypad-ui {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: #222;
+    padding: 20px;
+    border: 2px solid #444;
+    z-index: 1000;
 }
