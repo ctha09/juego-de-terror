@@ -8,15 +8,15 @@ camera.rotation.order = 'YXZ';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true; // Sombra activada
+renderer.shadowMap.enabled = true; 
+// Usamos PCFSoftShadowMap para sombras más realistas y marcadas
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 document.body.appendChild(renderer.domElement);
 
-// --- CARGA DE ASSETS ---
 const loader = new THREE.TextureLoader();
 let hasKey = false, drawerOpen = false, hasFlashlight = false, flashlightOn = false;
 let keys = {};
 
-// Función para evitar la mezcla de texturas
 const getTex = (path, r) => {
     const t = loader.load(path);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -24,36 +24,50 @@ const getTex = (path, r) => {
     return t;
 };
 
-const wallMat = new THREE.MeshStandardMaterial({ map: getTex('pared.jpg', 3), color: 0x666666, side: THREE.BackSide });
-const woodMat = new THREE.MeshStandardMaterial({ map: getTex('madera.jpg', 1), color: 0x3d2b1f });
+// Materiales con mayor rugosidad para que las sombras se noten mejor
+const wallMat = new THREE.MeshStandardMaterial({ map: getTex('pared.jpg', 3), color: 0x666666, side: THREE.BackSide, roughness: 0.8 });
+const woodMat = new THREE.MeshStandardMaterial({ map: getTex('madera.jpg', 1), color: 0x3d2b1f, roughness: 0.9 });
 
-// --- CONSTRUCCIÓN ---
-// Habitación
+// --- MUNDO ---
 const room = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 7), wallMat);
 room.position.y = 2;
 room.receiveShadow = true;
 scene.add(room);
 
-// VENTILADOR (Con sombras dinámicas)
+// VENTANA (Hueco visual con luz azulada de fondo)
+const windowFrame = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.8), new THREE.MeshBasicMaterial({color: 0x000011}));
+windowFrame.position.set(-3.49, 2.2, 0);
+windowFrame.rotation.y = Math.PI / 2;
+scene.add(windowFrame);
+
+// VENTILADOR (Ajustado para proyectar sombras)
 const fanGroup = new THREE.Group();
-fanGroup.position.set(0, 3.8, 0);
+fanGroup.position.set(0, 3.5, 0); // Un poco más abajo para que la luz lo cruce bien
 for(let i=0; i<4; i++) {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(2, 0.05, 0.4), woodMat.clone());
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.02, 0.4), woodMat.clone());
     blade.rotation.y = (Math.PI / 2) * i;
-    blade.castShadow = true;
+    blade.castShadow = true; // CRÍTICO para el efecto de luz entrecortada
     fanGroup.add(blade);
 }
 scene.add(fanGroup);
 
-// CAMA (Restaurada)
+// ILUMINACIÓN CENTRAL (Situada ARRIBA del ventilador)
+const ceilingLight = new THREE.PointLight(0xff6600, 20, 15);
+ceilingLight.position.set(0, 3.9, 0); // Pegada al techo, arriba de las aspas
+ceilingLight.castShadow = true;
+ceilingLight.shadow.mapSize.width = 1024; // Mayor resolución de sombra
+ceilingLight.shadow.mapSize.height = 1024;
+scene.add(ceilingLight);
+
+// CAMA
 const bed = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.6, 3.8), new THREE.MeshStandardMaterial({color: 0x222222}));
-bed.position.set(-2, 0.3, -1);
+bed.position.set(-2.2, 0.3, -1.2);
 bed.receiveShadow = true;
 scene.add(bed);
 
-// MESITA Y CAJÓN
+// MESITA (Alejada de la cama para que no se hunda)
 const stand = new THREE.Group();
-stand.position.set(-0.8, 0.5, -2.5);
+stand.position.set(-0.6, 0.5, -2.8); // Ajustada para evitar colisión con la cama
 scene.add(stand);
 
 const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1, 0.6), woodMat.clone());
@@ -62,7 +76,7 @@ stand.add(body);
 
 const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.5), new THREE.MeshStandardMaterial({color: 0x1a0d00}));
 drawer.position.set(0, 0.2, 0.05);
-drawer.name = "cajon_target"; // Nombre único para el raycaster
+drawer.name = "cajon_target";
 stand.add(drawer);
 
 const key = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.01, 0.05), new THREE.MeshStandardMaterial({color: 0xffd700}));
@@ -77,17 +91,13 @@ flMesh.position.y = 0.55;
 flMesh.name = "flashlight_target";
 stand.add(flMesh);
 
-// --- ILUMINACIÓN ---
-const light = new THREE.PointLight(0xff6600, 15, 12);
-light.position.set(0, 3, 0);
-light.castShadow = true;
-scene.add(light);
-
-const spot = new THREE.SpotLight(0xffffff, 0, 15, Math.PI/7);
+// LUZ DE LINTERNA (SpotLight)
+const spot = new THREE.SpotLight(0xffffff, 0, 20, Math.PI/7);
+spot.castShadow = true;
 scene.add(spot);
 scene.add(spot.target);
 
-// --- LÓGICA DE INTERACCIÓN CON "E" ---
+// --- INTERACCIÓN ---
 function checkInteraction() {
     const ray = new THREE.Raycaster();
     ray.setFromCamera(new THREE.Vector2(0,0), camera);
@@ -101,7 +111,7 @@ function checkInteraction() {
         }
         if(obj.name === "cajon_target" && !drawerOpen) {
             drawerOpen = true; key.visible = true;
-            document.getElementById('instruction').innerText = "Cajón abierto. Toma la llave.";
+            document.getElementById('instruction').innerText = "Cajón abierto. Toma la llave con 'E'.";
         }
         if(obj.name === "llave_target" && drawerOpen) {
             hasKey = true; obj.visible = false;
@@ -116,7 +126,7 @@ window.addEventListener('keydown', (e) => {
     if(e.code === 'KeyE') checkInteraction();
     if(e.code === 'KeyF' && hasFlashlight) {
         flashlightOn = !flashlightOn;
-        spot.intensity = flashlightOn ? 50 : 0;
+        spot.intensity = flashlightOn ? 60 : 0;
     }
 });
 window.addEventListener('keyup', (e) => keys[e.code] = false);
@@ -129,7 +139,6 @@ window.addEventListener('mousemove', (e) => {
     }
 });
 
-// --- ANIMACIÓN ---
 camera.position.set(0, 1.7, 2);
 function animate() {
     requestAnimationFrame(animate);
@@ -145,8 +154,11 @@ function animate() {
         spot.position.copy(camera.position);
         spot.target.position.copy(camera.position).add(camera.getWorldDirection(new THREE.Vector3()));
     }
-    if(drawerOpen && drawer.position.z < 0.4) drawer.position.z += 0.02;
-    fanGroup.rotation.y += 0.15; // El ventilador gira
+    if(drawerOpen && drawer.position.z < 0.45) drawer.position.z += 0.02;
+    
+    // Rotación del ventilador para generar el efecto de parpadeo de luz en el suelo
+    fanGroup.rotation.y += 0.2; 
+    
     renderer.render(scene, camera);
 }
 animate();
