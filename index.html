@@ -8,11 +8,11 @@
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; }
         #instruction {
             position: absolute; top: 10%; width: 100%; text-align: center;
-            color: white; font-size: 1.2rem; pointer-events: none; text-shadow: 2px 2px 4px #000;
+            color: #ffaa00; font-size: 1.2rem; pointer-events: none; text-shadow: 2px 2px 5px #000;
         }
         #crosshair {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: rgba(255,255,255,0.5); font-size: 24px; pointer-events: none;
+            color: rgba(255,255,255,0.3); font-size: 24px; pointer-events: none;
         }
         #battery-ui {
             position: absolute; bottom: 5%; right: 5%; color: #0f0; 
@@ -20,20 +20,20 @@
         }
         #keypad-ui {
             display: none; position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); background: rgba(20, 20, 20, 0.95);
-            padding: 20px; border: 2px solid #555; border-radius: 10px; text-align: center;
+            transform: translate(-50%, -50%); background: rgba(15, 15, 15, 0.98);
+            padding: 25px; border: 2px solid #444; border-radius: 5px; text-align: center; box-shadow: 0 0 20px #000;
         }
         #display { 
-            background: #000; color: #0f0; padding: 10px; margin-bottom: 10px; 
-            font-size: 20px; letter-spacing: 5px; border: 1px solid #0f0; height: 30px;
+            background: #050505; color: #0f0; padding: 15px; margin-bottom: 15px; 
+            font-size: 22px; letter-spacing: 5px; border: 1px solid #0a0; height: 30px;
         }
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        button { padding: 15px; font-size: 18px; cursor: pointer; background: #333; color: white; border: 1px solid #666; }
-        button:hover { background: #444; }
+        button { padding: 15px; font-size: 18px; cursor: pointer; background: #222; color: white; border: 1px solid #444; }
+        button:active { background: #111; }
     </style>
 </head>
 <body>
-    <div id="instruction">Busca algo para alumbrar en el ropero</div>
+    <div id="instruction">Usa 'WASD' para moverte y 'E' para interactuar</div>
     <div id="crosshair">+</div>
     <div id="battery-ui">LINTERNA: 100%</div>
     
@@ -43,12 +43,12 @@
             <button onclick="addNum('1')">1</button><button onclick="addNum('2')">2</button><button onclick="addNum('3')">3</button>
             <button onclick="addNum('4')">4</button><button onclick="addNum('5')">5</button><button onclick="addNum('6')">6</button>
             <button onclick="addNum('7')">7</button><button onclick="addNum('8')">8</button><button onclick="addNum('9')">9</button>
-            <button style="background:#600" onclick="closeKeypad()">X</button><button onclick="addNum('0')">0</button>
-            <button style="background:#060" onclick="checkCode()">OK</button>
+            <button style="background:#400" onclick="closeKeypad()">X</button><button onclick="addNum('0')">0</button>
+            <button style="background:#040" onclick="checkCode()">OK</button>
         </div>
     </div>
 
-    <div id="click-to-start" style="position:absolute; bottom:5%; width:100%; text-align:center; color:#ff4400; cursor:pointer;">HAZ CLIC PARA EMPEZAR</div>
+    <div id="click-to-start" style="position:absolute; bottom:5%; width:100%; text-align:center; color:#ff4400; cursor:pointer;">HAZ CLIC PARA ENTRAR A LA PESADILLA</div>
     
     <script type="module" src="main.js"></script>
     <script>
