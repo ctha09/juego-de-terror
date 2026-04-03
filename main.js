@@ -1,20 +1,12 @@
 import * as THREE from 'three';
 
-// --- VARIABLES GLOBALES ---
 let scene, camera, renderer;
-let ui_estado = 'NORMAL'; // Estado inicial
+const keys = { W: false, A: false, S: false, D: false, E: false, F: false, Shift: false };
 
-const keys = {
-    W: false, A: false, S: false, D: false, 
-    E: false, F: false, Shift: false
-};
-
-// --- INICIALIZACIÓN ---
 init();
 animate();
 
 function init() {
-    // Escena y Cámara
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     
@@ -23,107 +15,111 @@ function init() {
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // --- SECCION GRAFICOS (Iluminación y Ayudas) ---
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
-    hemiLight.position.set(0, 20, 0);
-    scene.add(hemiLight);
+    // --- DISEÑO: PASILLO Y AMBIENTE ---
+    const hallwayGroup = new THREE.Group();
+    hallwayGroup.position.set(0, 0, -5);
+    scene.add(hallwayGroup);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(5, 10, 7.5);
-    dirLight.castShadow = true;
-    scene.add(dirLight);
+    const hallwayMat = new THREE.MeshStandardMaterial({ color: 0x151515, side: THREE.BackSide });
+    const hallway = new THREE.Mesh(new THREE.BoxGeometry(2.5, 4, 15), hallwayMat);
+    hallway.position.set(0, 2, -7.5);
+    hallway.receiveShadow = true;
+    hallwayGroup.add(hallway);
 
-    scene.fog = null;
+    // --- ILUMINACIÓN DEL PASILLO ---
+    const lightFixtureGeo = new THREE.BoxGeometry(0.5, 0.1, 0.5);
+    const lightFixtureMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    const bulbMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff0dd, emissiveIntensity: 2 });
 
-    const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0x444444);
-    scene.add(gridHelper);
+    for (let i = 1; i <= 3; i++) {
+        const fixture = new THREE.Mesh(lightFixtureGeo, lightFixtureMat);
+        fixture.position.set(0, 3.9, -i * 4);
+        hallwayGroup.add(fixture);
 
-    // --- SECCION DISEÑO (Arquitectura y Objetos) ---
-    const wallMat = new THREE.MeshStandardMaterial({ 
-        color: 0x222222, 
-        roughness: 0.9, 
-        side: THREE.BackSide 
-    });
+        const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), bulbMat);
+        bulb.position.set(0, 3.8, -i * 4);
+        hallwayGroup.add(bulb);
 
-    const room = new THREE.Mesh(new THREE.BoxGeometry(10, 5, 10), wallMat);
-    room.position.y = 2.5;
-    room.receiveShadow = true;
-    scene.add(room);
+        const pLight = new THREE.PointLight(0xfff0dd, 5, 6);
+        pLight.position.set(0, 3.5, -i * 4);
+        pLight.castShadow = true;
+        hallwayGroup.add(pLight);
+    }
 
-    // Mesa
-    const tableGroup = new THREE.Group();
-    tableGroup.position.set(-3.5, 0, -3.5);
-    scene.add(tableGroup);
+    // --- DETALLES: TABLONES ---
+    const plankGeo = new THREE.BoxGeometry(2.2, 0.05, 0.3);
+    const plankMat = new THREE.MeshStandardMaterial({ color: 0x0a0500 });
+    for (let j = 0; j < 10; j++) {
+        const plank = new THREE.Mesh(plankGeo, plankMat);
+        plank.position.set(0, 0.02, -j * 1.5);
+        hallwayGroup.add(plank);
+    }
 
-    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 1.5), new THREE.MeshStandardMaterial({color: 0x111111, metalness: 0.8}));
-    tableTop.position.y = 1;
-    tableTop.castShadow = true;
-    tableGroup.add(tableTop);
+    // --- OBJETOS INTERACTUABLES (Ejemplo para que el código funcione) ---
+    // Mueble/Ropero
+    const mueble = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 0.5), new THREE.MeshStandardMaterial({color: 0x442200}));
+    mueble.name = "int_mueble";
+    mueble.position.set(-2, 1, -2);
+    mueble.userData = { abierto: false };
+    scene.add(mueble);
 
-    const legGeo = new THREE.BoxGeometry(0.1, 1, 0.1);
-    const legMat = new THREE.MeshStandardMaterial({color: 0x050505});
-    [[0.9, -0.6], [0.9, 0.6], [-0.9, -0.6], [-0.9, 0.6]].forEach(pos => {
-        const leg = new THREE.Mesh(legGeo, legMat);
-        leg.position.set(pos[0], 0.5, pos[1]);
-        tableGroup.add(leg);
-    });
-
-    // Ropero y Linterna
-    const closetGroup = new THREE.Group();
-    closetGroup.position.set(4, 0, -4);
-    closetGroup.rotation.y = -Math.PI / 4;
-    scene.add(closetGroup);
-
-    const closetBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.8, 0.8), new THREE.MeshStandardMaterial({color: 0x1a0f00}));
-    closetBody.position.y = 1.9;
-    closetBody.castShadow = true;
-    closetGroup.add(closetBody);
-
-    const doorL = new THREE.Mesh(new THREE.BoxGeometry(1.1, 3.7, 0.05), new THREE.MeshStandardMaterial({color: 0x2a1a0a}));
-    doorL.position.set(-0.55, 1.9, 0.41);
-    doorL.name = "interactable_closet";
-    closetGroup.add(doorL);
-
-    const fl = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.04, 0.25), new THREE.MeshStandardMaterial({color: 0x111, emissive: 0x111}));
-    fl.rotation.x = Math.PI / 2;
-    fl.position.set(0, 2, 0);
-    fl.name = "interactable_fl";
-    closetGroup.add(fl);
-
-    configurarMouse();
-    window.addEventListener('resize', onWindowResize, false);
+    configurarControlesMouse();
+    setupKeyboard();
 }
 
-// --- SECCION FUNCIONES (Lógica) ---
-window.addEventListener('keydown', (e) => {
-    const key = e.code.replace('Key', '');
-    if (keys.hasOwnProperty(key)) keys[key] = true;
-    if (e.code === 'ShiftLeft') keys.Shift = true;
-    
-    if (e.code === 'KeyE') console.log("Interacción ejecutada"); 
-    if (e.code === 'KeyF') console.log("Linterna toggled");
-});
+// --- FUNCIONES: INTERACCIÓN Y LÓGICA ---
 
-window.addEventListener('keyup', (e) => {
-    const key = e.code.replace('Key', '');
-    if (keys.hasOwnProperty(key)) keys[key] = false;
-    if (e.code === 'ShiftLeft') keys.Shift = false;
-});
+function ejecutarInteraccion() {
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    raycaster.far = 3.5;
 
-function procesarMovimiento() {
-    if (!document.pointerLockElement) return;
-    const basuraVel = keys.Shift ? 0.12 : 0.06;
-    
-    if (keys.W) camera.translateZ(-basuraVel);
-    if (keys.S) camera.translateZ(basuraVel);
-    if (keys.A) camera.translateX(-basuraVel);
-    if (keys.D) camera.translateX(basuraVel);
-    camera.position.y = 1.7; 
+    const objetosTocados = raycaster.intersectObjects(scene.children, true);
+
+    if (objetosTocados.length > 0) {
+        let obj = objetosTocados[0].object;
+
+        while (obj.parent && !obj.name.includes("int_")) {
+            obj = obj.parent;
+        }
+
+        console.log("Mirando a:", obj.name);
+
+        if (obj.name === "int_mueble") {
+            obj.userData.abierto = !obj.userData.abierto;
+            // actualizarInstruccion() debe estar definida en tu UI
+        }
+        if (obj.name === "int_puerta_pasillo") {
+            obj.userData.abierta = !obj.userData.abierta;
+        }
+        if (obj.name === "int_puerta_blindada") {
+            // abrirInterfazCodigo(); 
+        }
+        if (obj.name === "int_linterna") {
+            // recogerObjeto(obj);
+        }
+    }
 }
 
-function configurarMouse() {
-    renderer.domElement.addEventListener('mousedown', () => {
-        if (ui_estado !== 'KEYPAD_VISIBLE') {
+function actualizarAnimacionesObjetos() {
+    scene.traverse((obj) => {
+        if (obj.name === "int_mueble") {
+            const rotacionObjetivo = obj.userData.abierto ? 1.8 : 0;
+            obj.rotation.y += (rotacionObjetivo - obj.rotation.y) * 0.1;
+        }
+        if (obj.name === "int_puerta_pasillo") {
+            const rotacionObjetivo = obj.userData.abierta ? Math.PI / 2 : 0;
+            obj.rotation.y += (rotacionObjetivo - obj.rotation.y) * 0.1;
+        }
+    });
+}
+
+function configurarControlesMouse() {
+    document.addEventListener('mousedown', () => {
+        const keypad = document.getElementById('keypad-ui');
+        const keypadVisible = keypad && keypad.style.display === 'block';
+        
+        if (!keypadVisible) {
             renderer.domElement.requestPointerLock();
         }
     });
@@ -138,14 +134,31 @@ function configurarMouse() {
     });
 }
 
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+function setupKeyboard() {
+    window.addEventListener('keydown', (e) => {
+        const key = e.code.replace('Key', '');
+        if (keys.hasOwnProperty(key)) keys[key] = true;
+        if (e.code === 'KeyE') ejecutarInteraccion();
+    });
+    window.addEventListener('keyup', (e) => {
+        const key = e.code.replace('Key', '');
+        if (keys.hasOwnProperty(key)) keys[key] = false;
+    });
+}
+
+function procesarMovimientoManual() {
+    if (!document.pointerLockElement) return;
+    const vel = keys.Shift ? 0.12 : 0.06;
+    if (keys.W) camera.translateZ(-vel);
+    if (keys.S) camera.translateZ(vel);
+    if (keys.A) camera.translateX(-vel);
+    if (keys.D) camera.translateX(vel);
+    camera.position.y = 1.7;
 }
 
 function animate() {
     requestAnimationFrame(animate);
-    procesarMovimiento();
+    procesarMovimientoManual();
+    actualizarAnimacionesObjetos();
     renderer.render(scene, camera);
 }
