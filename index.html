@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horror Escape - Carlos Thomas Acosta</title>
+    <title>Escape Room - Carlos Thomas Acosta</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; }
         #instruction {
@@ -17,15 +17,16 @@
         #keypad-ui {
             display: none; position: absolute; top: 50%; left: 50%; 
             transform: translate(-50%, -50%); background: rgba(10, 10, 10, 0.98);
-            padding: 25px; border: 1px solid #444; text-align: center;
+            padding: 25px; border: 1px solid #444; text-align: center; box-shadow: 0 0 30px #000;
         }
         #display { background: #000; color: #0f0; padding: 15px; margin-bottom: 15px; font-size: 22px; border: 1px solid #0f0; height: 30px; }
         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         button { padding: 15px; font-size: 18px; cursor: pointer; background: #222; color: white; border: 1px solid #444; }
+        button:hover { background: #333; }
     </style>
 </head>
 <body>
-    <div id="instruction">Presiona 'E' para abrir el ropero</div>
+    <div id="instruction">Presiona 'E' para interactuar</div>
     <div id="crosshair">+</div>
     
     <div id="keypad-ui">
@@ -45,15 +46,30 @@
     <script>
         let currentInput = "";
         const correctCode = "031223";
-        window.addNum = (n) => { if(currentInput.length < 6) { currentInput += n; document.getElementById('display').innerText = currentInput; } };
-        window.closeKeypad = () => { document.getElementById('keypad-ui').style.display = 'none'; currentInput = ""; document.getElementById('display').innerText = ""; document.body.requestPointerLock(); };
+
+        window.addNum = (n) => {
+            if(currentInput.length < 6) {
+                currentInput += n;
+                document.getElementById('display').innerText = currentInput;
+            }
+        };
+
+        window.closeKeypad = () => {
+            document.getElementById('keypad-ui').style.display = 'none';
+            currentInput = "";
+            document.getElementById('display').innerText = "";
+            document.body.requestPointerLock();
+        };
+
         window.checkCode = () => {
             if(currentInput === correctCode) {
-                document.getElementById('display').innerText = "ACCESO";
-                window.dispatchEvent(new CustomEvent('unlockDoor'));
-                setTimeout(closeKeypad, 1000);
+                document.getElementById('display').innerText = "CORRECTO";
+                // Enviamos evento al juego para que la puerta se abra sola
+                window.dispatchEvent(new CustomEvent('openBlindDoor'));
+                setTimeout(closeKeypad, 800);
             } else {
-                currentInput = ""; document.getElementById('display').innerText = "ERROR";
+                currentInput = "";
+                document.getElementById('display').innerText = "ERROR";
                 setTimeout(() => document.getElementById('display').innerText = "", 500);
             }
         };
