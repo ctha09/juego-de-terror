@@ -3,27 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Horror Room - Carlos Thomas Acosta</title>
+    <title>Horror Escape - Carlos Thomas Acosta</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; }
         #instruction {
-            position: absolute; top: 15%; width: 100%; text-align: center;
+            position: absolute; top: 10%; width: 100%; text-align: center;
             color: white; font-size: 1.2rem; pointer-events: none; text-shadow: 2px 2px 4px #000;
         }
         #crosshair {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: rgba(255,255,255,0.7); font-size: 24px; pointer-events: none;
+            color: rgba(255,255,255,0.5); font-size: 24px; pointer-events: none;
         }
-        #click-to-start {
-            position: absolute; bottom: 5%; width: 100%; text-align: center;
-            color: #ff4400; font-size: 0.9rem; cursor: pointer;
+        /* Panel del Teclado Numérico */
+        #keypad-ui {
+            display: none; position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); background: rgba(20, 20, 20, 0.95);
+            padding: 20px; border: 2px solid #555; border-radius: 10px; text-align: center;
         }
+        #display { 
+            background: #000; color: #0f0; padding: 10px; margin-bottom: 10px; 
+            font-size: 20px; letter-spacing: 5px; border: 1px solid #0f0; height: 30px;
+        }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        button { 
+            padding: 15px; font-size: 18px; cursor: pointer; background: #333; 
+            color: white; border: 1px solid #666; 
+        }
+        button:hover { background: #444; }
+        #btn-cancel { background: #600; }
     </style>
 </head>
 <body>
-    <div id="instruction">Busca la linterna para empezar</div>
+    <div id="instruction">Explora la habitación</div>
     <div id="crosshair">+</div>
-    <div id="click-to-start">HAZ CLIC PARA ENTRAR</div>
+    
+    <div id="keypad-ui">
+        <div id="display"></div>
+        <div class="grid">
+            <button onclick="addNum('1')">1</button><button onclick="addNum('2')">2</button><button onclick="addNum('3')">3</button>
+            <button onclick="addNum('4')">4</button><button onclick="addNum('5')">5</button><button onclick="addNum('6')">6</button>
+            <button onclick="addNum('7')">7</button><button onclick="addNum('8')">8</button><button onclick="addNum('9')">9</button>
+            <button id="btn-cancel" onclick="closeKeypad()">X</button><button onclick="addNum('0')">0</button>
+            <button style="background: #060;" onclick="checkCode()">OK</button>
+        </div>
+    </div>
+
+    <div id="click-to-start" style="position:absolute; bottom:5%; width:100%; text-align:center; color:#ff4400; cursor:pointer;">HAZ CLIC PARA EMPEZAR</div>
+    
     <script type="module" src="main.js"></script>
+    <script>
+        let currentInput = "";
+        const correctCode = "031223";
+
+        window.addNum = (n) => {
+            if(currentInput.length < 6) {
+                currentInput += n;
+                document.getElementById('display').innerText = currentInput;
+            }
+        };
+
+        window.closeKeypad = () => {
+            document.getElementById('keypad-ui').style.display = 'none';
+            currentInput = "";
+            document.getElementById('display').innerText = "";
+            document.body.requestPointerLock();
+        };
+
+        window.checkCode = () => {
+            if(currentInput === correctCode) {
+                document.getElementById('display').style.color = "#0f0";
+                document.getElementById('display').innerText = "ACCESO";
+                window.dispatchEvent(new CustomEvent('unlockDoor'));
+                setTimeout(closeKeypad, 1000);
+            } else {
+                document.getElementById('display').style.color = "#f00";
+                currentInput = "";
+                setTimeout(() => {
+                    document.getElementById('display').style.color = "#0f0";
+                    document.getElementById('display').innerText = "";
+                }, 500);
+            }
+        };
+    </script>
 </body>
 </html>
