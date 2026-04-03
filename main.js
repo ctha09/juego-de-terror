@@ -1,6 +1,5 @@
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
 
-// --- 1. CONFIGURACIÓN ---
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x0a0a0a, 0.15);
 
@@ -13,135 +12,133 @@ renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // --- ESTADO ---
-let hasKey = false;
-let drawerOpen = false;
-let hasFlashlight = false;
-let flashlightOn = false;
+let hasKey = false, drawerOpen = false, hasFlashlight = false, flashlightOn = false;
 let keys = {};
-const textureLoader = new THREE.TextureLoader();
+const loader = new THREE.TextureLoader();
 
-// --- TEXTURAS ---
-const wallTex = textureLoader.load('pared.jpg');
-const woodTex = textureLoader.load('madera.jpg');
+// --- FUNCIÓN PARA MEJORAR TEXTURAS ---
+function prepareTex(tex, repeatX, repeatY) {
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeatX, repeatY);
+    return tex;
+}
 
-const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, color: 0x888877, side: THREE.BackSide });
-const woodMat = new THREE.MeshStandardMaterial({ map: woodTex, color: 0x554433 });
+// --- MATERIALES (AHORA CON MÁS DETALLE) ---
+// Repetimos la textura 3 veces para que se note más el detalle
+const wallMat = new THREE.MeshStandardMaterial({ 
+    map: prepareTex(loader.load('pared.jpg'), 3, 2), 
+    color: 0x777777, 
+    side: THREE.BackSide,
+    roughness: 0.8
+});
 
-// --- LUCES ---
-const orangeLight = new THREE.PointLight(0xff6600, 15, 10);
-orangeLight.position.set(0, 2.8, 0);
-orangeLight.castShadow = true;
-scene.add(orangeLight);
+const woodMat = new THREE.MeshStandardMaterial({ 
+    map: prepareTex(loader.load('madera.jpg'), 1, 1), 
+    color: 0x443322,
+    roughness: 0.9
+});
 
-const flashlightBeam = new THREE.SpotLight(0xffffff, 0, 15, Math.PI / 6, 0.5, 1);
-flashlightBeam.castShadow = true;
-scene.add(flashlightBeam);
-scene.add(flashlightBeam.target);
-
-// --- ARQUITECTURA (CUARTO PEQUEÑO) ---
-// Reducido a 6x6 para que sea más tenso
+// --- MUNDO ---
 const room = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), wallMat);
 room.position.y = 2;
+room.receiveShadow = true;
 scene.add(room);
-
-// Ventana (Hueco de luz)
-const winGeo = new THREE.PlaneGeometry(1, 1.5);
-const winMat = new THREE.MeshBasicMaterial({ color: 0x000022 });
-const windowMesh = new THREE.Mesh(winGeo, winMat);
-windowMesh.position.set(-2.98, 2, 0);
-windowMesh.rotation.y = Math.PI / 2;
-scene.add(windowMesh);
 
 // Ventilador
 const fan = new THREE.Group();
 fan.position.set(0, 3.8, 0);
 for(let i=0; i<4; i++) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(2, 0.05, 0.3), woodMat);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.05, 0.3), woodMat);
     b.rotation.y = (Math.PI / 2) * i;
     fan.add(b);
 }
 scene.add(fan);
 
 // Cama
-const bed = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 3.5), new THREE.MeshStandardMaterial({color: 0x555544}));
-bed.position.set(-1.8, 0.25, -1);
+const bed = new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 3.5), new THREE.MeshStandardMaterial({color: 0x222222}));
+bed.position.set(-1.8, 0.3, -1);
 scene.add(bed);
 
-// MESITA DE LUZ + CAJÓN + LLAVE
-const standGroup = new THREE.Group();
-standGroup.position.set(-0.5, 0.5, -2);
-scene.add(standGroup);
+// --- MESITA + CAJÓN (MEJORADO) ---
+const stand = new THREE.Group();
+stand.position.set(-0.8, 0.5, -2);
+scene.add(stand);
 
 const standBody = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1, 0.6), woodMat);
-standGroup.add(standBody);
+standBody.castShadow = true;
+stand.add(standBody);
 
-const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.5), new THREE.MeshStandardMaterial({color: 0x221105}));
+// El Cajón (Aseguramos el nombre en el Mesh)
+const drawerGeo = new THREE.BoxGeometry(0.5, 0.2, 0.5);
+const drawerMat = new THREE.MeshStandardMaterial({color: 0x1a0d00});
+const drawer = new THREE.Mesh(drawerGeo, drawerMat);
 drawer.position.set(0, 0.2, 0.05);
-drawer.name = "cajon_obj";
-standGroup.add(drawer);
+drawer.name = "cajon"; // CRÍTICO PARA LA INTERACCIÓN
+stand.add(drawer);
 
-const key = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.01, 0.1), new THREE.MeshStandardMaterial({color: 0xffd700}));
-key.position.set(0, 0.1, 0);
-key.name = "llave_obj";
-key.visible = false; // Solo se ve al abrir
+const key = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.01, 0.04), new THREE.MeshStandardMaterial({color: 0xffd700}));
+key.position.set(0, 0.05, 0);
+key.name = "llave";
+key.visible = false;
 drawer.add(key);
 
-// Linterna sobre la mesa
-const flProp = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.2), new THREE.MeshStandardMaterial({color: 0x111111}));
+const flProp = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2), new THREE.MeshStandardMaterial({color: 0x050505}));
 flProp.rotation.z = Math.PI/2;
-flProp.position.set(0, 0.55, 0);
-flProp.name = "linterna_obj";
-standGroup.add(flProp);
+flProp.position.y = 0.55;
+flProp.name = "linterna";
+stand.add(flProp);
 
-// --- INTERACCIÓN CON "E" ---
-const raycaster = new THREE.Raycaster();
-const center = new THREE.Vector2(0,0);
+// --- LUCES ---
+const light = new THREE.PointLight(0xff6600, 12, 10);
+light.position.set(0, 2.5, 0);
+light.castShadow = true;
+scene.add(light);
 
+const flashlight = new THREE.SpotLight(0xffffff, 0, 20, Math.PI/7, 0.4);
+flashlight.castShadow = true;
+scene.add(flashlight);
+scene.add(flashlight.target);
+
+// --- INTERACCIÓN ---
 function interact() {
-    raycaster.setFromCamera(center, camera);
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
     const hits = raycaster.intersectObjects(scene.children, true);
     
     if (hits.length > 0) {
         let obj = hits[0].object;
-        
-        // 1. Agarrar Linterna
-        if (obj.name === "linterna_obj" && !hasFlashlight) {
-            hasFlashlight = true;
-            obj.visible = false;
-            document.getElementById('instruction').innerText = "Linterna recogida (F para prender)";
-        }
-        // 2. Abrir Cajón
-        else if (obj.name === "cajon_obj" && !drawerOpen) {
-            drawerOpen = true;
-            key.visible = true; // Revelar la llave
-            document.getElementById('instruction').innerText = "Cajón abierto. Hay algo adentro...";
-        }
-        // 3. Agarrar Llave
-        else if (obj.name === "llave_obj" && drawerOpen && !hasKey) {
-            hasKey = true;
-            obj.visible = false;
+        console.log("Tocado:", obj.name); // Mira la consola para ver qué tocas
+
+        if (obj.name === "linterna" && !hasFlashlight) {
+            hasFlashlight = true; obj.visible = false;
+            document.getElementById('instruction').innerText = "Linterna recogida (F)";
+        } 
+        else if (obj.name === "cajon" && !drawerOpen) {
+            drawerOpen = true; 
+            key.visible = true;
+            document.getElementById('instruction').innerText = "Cajón abierto. Toma la llave.";
+        } 
+        else if (obj.name === "llave" && drawerOpen && !hasKey) {
+            hasKey = true; obj.visible = false;
             document.getElementById('instruction').innerText = "¡Tienes la llave!";
         }
     }
 }
 
 // --- CONTROLES ---
-document.addEventListener('keydown', (e) => {
+window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if (e.code === 'KeyE') interact();
-    if (e.code === 'KeyF' && hasFlashlight) {
+    if(e.code === 'KeyE') interact();
+    if(e.code === 'KeyF' && hasFlashlight) {
         flashlightOn = !flashlightOn;
-        flashlightBeam.intensity = flashlightOn ? 40 : 0;
+        flashlight.intensity = flashlightOn ? 50 : 0;
     }
 });
-document.addEventListener('keyup', (e) => keys[e.code] = false);
-
-document.addEventListener('mousedown', () => {
-    if (document.pointerLockElement !== document.body) document.body.requestPointerLock();
-});
-
-document.addEventListener('mousemove', (e) => {
-    if (document.pointerLockElement === document.body) {
+window.addEventListener('keyup', (e) => keys[e.code] = false);
+window.addEventListener('mousedown', () => document.body.requestPointerLock());
+window.addEventListener('mousemove', (e) => {
+    if (document.pointerLockElement) {
         camera.rotation.y -= e.movementX * 0.002;
         camera.rotation.x -= e.movementY * 0.002;
         camera.rotation.x = Math.max(-1.5, Math.min(1.5, camera.rotation.x));
@@ -150,26 +147,23 @@ document.addEventListener('mousemove', (e) => {
 
 // --- LOOP ---
 camera.position.set(0, 1.7, 2);
-
 function animate() {
     requestAnimationFrame(animate);
-    if (document.pointerLockElement === document.body) {
-        const s = 0.05;
+    if (document.pointerLockElement) {
+        const s = 0.06;
         if (keys['KeyW']) camera.translateZ(-s);
         if (keys['KeyS']) camera.translateZ(s);
         if (keys['KeyA']) camera.translateX(-s);
         if (keys['KeyD']) camera.translateX(s);
         camera.position.y = 1.7;
     }
-    
     if (hasFlashlight) {
-        flashlightBeam.position.copy(camera.position);
-        const t = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).add(camera.position);
-        flashlightBeam.target.position.copy(t);
+        flashlight.position.copy(camera.position);
+        const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
+        flashlight.target.position.copy(camera.position).add(dir);
     }
-    
     if (drawerOpen && drawer.position.z < 0.4) drawer.position.z += 0.02;
-    fan.rotation.y += 0.1;
+    fan.rotation.y += 0.12;
     renderer.render(scene, camera);
 }
 animate();
