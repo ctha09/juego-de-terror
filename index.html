@@ -3,60 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terror en el Piso 5</title>
+    <title>Horror Room - Programado por Carlos Thomas Acosta</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; }
-        
-        /* Interfaz de Usuario */
-        #ui {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            text-align: center;
-            pointer-events: none; /* Para que no bloquee el clic del mouse */
-            user-select: none;
-        }
-
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; }
         #instruction {
-            position: absolute;
-            top: -100px;
-            width: 500px;
-            left: -250px;
-            font-size: 1.5rem;
-            text-shadow: 2px 2px 10px #000;
+            position: absolute; top: 20%; width: 100%; text-align: center;
+            color: white; font-size: 1.2rem; pointer-events: none; text-shadow: 2px 2px 4px #000;
         }
-
         #crosshair {
-            font-size: 20px;
-            opacity: 0.5;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.5); font-size: 20px; pointer-events: none;
         }
-
-        /* Aviso de clic para empezar */
-        #click-prompt {
-            position: absolute;
-            bottom: 50px;
-            width: 100%;
-            text-align: center;
-            color: #ff6600;
-            font-weight: bold;
-            animation: blink 2s infinite;
+        #click-to-start {
+            position: absolute; bottom: 10%; width: 100%; text-align: center;
+            color: #ff4400; font-size: 0.8rem; cursor: pointer;
         }
-
-        @keyframes blink { 0% {opacity: 0;} 50% {opacity: 1;} 100% {opacity: 0;} }
     </style>
 </head>
 <body>
-
-    <div id="ui">
-        <div id="instruction">Busca la llave para abrir la puerta</div>
-        <div id="crosshair">+</div>
-    </div>
-
-    <div id="click-prompt">HAZ CLIC PARA EMPEZAR</div>
-
+    <div id="instruction">Busca la llave para abrir la puerta</div>
+    <div id="crosshair">+</div>
+    <div id="click-to-start">HAZ CLIC PARA EMPEZAR</div>
     <script type="module" src="main.js"></script>
-
 </body>
 </html>
